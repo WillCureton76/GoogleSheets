@@ -1,18 +1,18 @@
 openapi: 3.0.0
 info:
-  title: Google Sheets Proxy API
+  title: Google Sheets API Proxy
   version: 1.0.0
-  description: Minimal proxy that adds OAuth token to Google Sheets API requests
+  description: OAuth proxy for Google Sheets API v4 - all 17 endpoints
 
 servers:
   - url: https://your-deployment.vercel.app
 
 paths:
-  /api/proxy:
+  # Values endpoints
+  /api/values/append:
     post:
-      operationId: sheetsProxy
-      summary: Proxy requests to Google Sheets API
-      description: Forwards requests to any Google Sheets API endpoint with OAuth authentication
+      operationId: valuesAppend
+      summary: Append values to a spreadsheet
       requestBody:
         required: true
         content:
@@ -20,32 +20,266 @@ paths:
             schema:
               type: object
               required:
-                - endpoint
+                - spreadsheetId
+                - range
+                - valueInputOption
+                - values
               properties:
-                endpoint:
+                spreadsheetId:
                   type: string
-                  description: The Google Sheets API endpoint path (without base URL)
-                  example: "spreadsheets/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/values/Sheet1!A1:append?valueInputOption=USER_ENTERED"
-                method:
+                range:
                   type: string
-                  description: HTTP method (defaults to POST)
-                  enum: [GET, POST, PUT, DELETE]
-                  default: POST
-              additionalProperties: true
-              example:
-                endpoint: "spreadsheets/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/values/Sheet1!A1:append?valueInputOption=USER_ENTERED"
-                method: "POST"
-                values: [["Data 1", "Data 2", "Data 3"]]
+                  description: A1 notation range
+                valueInputOption:
+                  type: string
+                  enum: [RAW, USER_ENTERED]
+                values:
+                  type: array
+                  items:
+                    type: array
+                insertDataOption:
+                  type: string
+                  enum: [OVERWRITE, INSERT_ROWS]
+                includeValuesInResponse:
+                  type: boolean
       responses:
         '200':
-          description: Response from Google Sheets API
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          description: Bad request - missing endpoint
-        '401':
-          description: Unauthorized
-        '405':
-          description: Method not allowed
+          description: Success
+
+  /api/values/update:
+    put:
+      operationId: valuesUpdate
+      summary: Update values in a spreadsheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - range
+                - valueInputOption
+                - values
+              properties:
+                spreadsheetId:
+                  type: string
+                range:
+                  type: string
+                valueInputOption:
+                  type: string
+                  enum: [RAW, USER_ENTERED]
+                values:
+                  type: array
+                  items:
+                    type: array
+                includeValuesInResponse:
+                  type: boolean
+      responses:
+        '200':
+          description: Success
+
+  /api/values/get:
+    get:
+      operationId: valuesGet
+      summary: Get values from a spreadsheet
+      parameters:
+        - name: spreadsheetId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: range
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: majorDimension
+          in: query
+          schema:
+            type: string
+            enum: [ROWS, COLUMNS]
+        - name: valueRenderOption
+          in: query
+          schema:
+            type: string
+            enum: [FORMATTED_VALUE, UNFORMATTED_VALUE, FORMULA]
+      responses:
+        '200':
+          description: Success
+
+  /api/values/clear:
+    post:
+      operationId: valuesClear
+      summary: Clear values from a spreadsheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - range
+              properties:
+                spreadsheetId:
+                  type: string
+                range:
+                  type: string
+      responses:
+        '200':
+          description: Success
+
+  /api/values/batchGet:
+    get:
+      operationId: valuesBatchGet
+      summary: Get multiple ranges of values
+      parameters:
+        - name: spreadsheetId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: ranges
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: majorDimension
+          in: query
+          schema:
+            type: string
+            enum: [ROWS, COLUMNS]
+      responses:
+        '200':
+          description: Success
+
+  /api/values/batchUpdate:
+    post:
+      operationId: valuesBatchUpdate
+      summary: Update multiple ranges of values
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - valueInputOption
+                - data
+              properties:
+                spreadsheetId:
+                  type: string
+                valueInputOption:
+                  type: string
+                  enum: [RAW, USER_ENTERED]
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      range:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: array
+                includeValuesInResponse:
+                  type: boolean
+      responses:
+        '200':
+          description: Success
+
+  /api/values/batchClear:
+    post:
+      operationId: valuesBatchClear
+      summary: Clear multiple ranges of values
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - ranges
+              properties:
+                spreadsheetId:
+                  type: string
+                ranges:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Success
+
+  # Spreadsheet endpoints
+  /api/spreadsheets/create:
+    post:
+      operationId: spreadsheetsCreate
+      summary: Create a new spreadsheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                properties:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                sheets:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Success
+
+  /api/spreadsheets/get:
+    get:
+      operationId: spreadsheetsGet
+      summary: Get spreadsheet metadata
+      parameters:
+        - name: spreadsheetId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: includeGridData
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Success
+
+  /api/spreadsheets/batchUpdate:
+    post:
+      operationId: spreadsheetsBatchUpdate
+      summary: Apply batch updates to spreadsheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - requests
+              properties:
+                spreadsheetId:
+                  type: string
+                requests:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Success
