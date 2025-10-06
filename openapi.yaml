@@ -253,3 +253,127 @@ paths:
       responses:
         '200':
           description: Successfully created spreadsheet
+
+  /api/values/batchGet:
+    get:
+      operationId: batchGetValues
+      summary: Read multiple ranges at once
+      description: Retrieves data from multiple ranges in a single request. More efficient than multiple individual get calls.
+      parameters:
+        - name: spreadsheetId
+          in: query
+          required: true
+          description: The ID of the spreadsheet
+          schema:
+            type: string
+          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        - name: ranges
+          in: query
+          required: true
+          description: Multiple ranges in A1 notation (can specify multiple times)
+          schema:
+            type: array
+            items:
+              type: string
+          example: ["Sheet1!A1:B5", "Sheet2!C1:D10"]
+        - name: majorDimension
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ROWS, COLUMNS]
+            default: ROWS
+      responses:
+        '200':
+          description: Successfully retrieved multiple ranges
+
+  /api/values/batchClear:
+    post:
+      operationId: batchClearValues
+      summary: Clear multiple ranges at once
+      description: Removes data from multiple ranges in a single request. Keeps formatting intact.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - ranges
+              properties:
+                spreadsheetId:
+                  type: string
+                  description: The ID of the spreadsheet
+                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                ranges:
+                  type: array
+                  description: Array of ranges to clear
+                  items:
+                    type: string
+                  example: ["Sheet1!A1:B5", "Sheet1!D1:E10"]
+            example:
+              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+              ranges: ["Sheet1!A2:C10", "Sheet1!E2:F10"]
+      responses:
+        '200':
+          description: Successfully cleared multiple ranges
+
+  /api/spreadsheets/get:
+    get:
+      operationId: getSpreadsheet
+      summary: Get spreadsheet metadata and properties
+      description: Retrieves information about a spreadsheet including its title, sheets, and properties. Does not return cell data unless includeGridData is true.
+      parameters:
+        - name: spreadsheetId
+          in: query
+          required: true
+          description: The ID of the spreadsheet
+          schema:
+            type: string
+          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        - name: includeGridData
+          in: query
+          required: false
+          description: True to include cell data, false for just metadata
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successfully retrieved spreadsheet info
+
+  /api/spreadsheets/batchUpdate:
+    post:
+      operationId: batchUpdateSpreadsheet
+      summary: Apply formatting and structural changes to spreadsheet
+      description: Advanced endpoint for formatting cells, adding sheets, creating charts, etc. Use this for operations beyond just changing cell values.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - requests
+              properties:
+                spreadsheetId:
+                  type: string
+                  description: The ID of the spreadsheet
+                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                requests:
+                  type: array
+                  description: Array of update requests (addSheet, updateCells, mergeCells, etc)
+                  items:
+                    type: object
+                  example: [{"addSheet": {"properties": {"title": "New Sheet"}}}]
+            example:
+              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+              requests:
+                - addSheet:
+                    properties:
+                      title: "Q2 Data"
+      responses:
+        '200':
+          description: Successfully applied updates
