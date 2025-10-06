@@ -8,9 +8,9 @@ servers:
   - url: https://your-deployment.vercel.app
 
 paths:
-  /api/append-room-entry:
+  /api/append-row:
     post:
-      operationId: appendRoomEntry
+      operationId: appendRow
       summary: Append a row to a Google Sheet
       description: Forwards the request body to Google Sheets API to append values
       requestBody:
@@ -39,7 +39,7 @@ paths:
                     type: array
                     items:
                       type: string
-                  example: [["Room 101", "2024-01-15", "Meeting", "Confirmed"]]
+                  example: [["Data 1", "Data 2", "Data 3", "Data 4"]]
       responses:
         '200':
           description: Successful response from Google Sheets API
