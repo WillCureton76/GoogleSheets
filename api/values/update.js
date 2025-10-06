@@ -4,17 +4,20 @@ export default async function handler(req, res) {
   }
 
   const { spreadsheetId, range, valueInputOption, values, includeValuesInResponse } = req.body;
-  const token = process.env.GOOGLE_OAUTH_TOKEN;
+  const auth = req.headers['authorization'];
+  if (!auth?.toLowerCase().startsWith('bearer ')) {
+    return res.status(401).json({ error: 'Missing Authorization header' });
+  }
 
   const params = new URLSearchParams({ valueInputOption });
   if (includeValuesInResponse) params.append('includeValuesInResponse', includeValuesInResponse);
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?${params}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?${params}`;
 
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': auth,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ values }),

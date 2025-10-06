@@ -4,7 +4,10 @@ export default async function handler(req, res) {
   }
 
   const { spreadsheetId, ranges, majorDimension } = req.query;
-  const token = process.env.GOOGLE_OAUTH_TOKEN;
+  const auth = req.headers['authorization'];
+  if (!auth?.toLowerCase().startsWith('bearer ')) {
+    return res.status(401).json({ error: 'Missing Authorization header' });
+  }
 
   const params = new URLSearchParams();
   if (Array.isArray(ranges)) {
@@ -19,7 +22,7 @@ export default async function handler(req, res) {
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': auth,
     },
   });
 

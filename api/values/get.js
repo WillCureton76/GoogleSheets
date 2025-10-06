@@ -4,18 +4,21 @@ export default async function handler(req, res) {
   }
 
   const { spreadsheetId, range, majorDimension, valueRenderOption } = req.query;
-  const token = process.env.GOOGLE_OAUTH_TOKEN;
+  const auth = req.headers['authorization'];
+  if (!auth?.toLowerCase().startsWith('bearer ')) {
+    return res.status(401).json({ error: 'Missing Authorization header' });
+  }
 
   const params = new URLSearchParams();
   if (majorDimension) params.append('majorDimension', majorDimension);
   if (valueRenderOption) params.append('valueRenderOption', valueRenderOption);
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?${params}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?${params}`;
 
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': auth,
     },
   });
 

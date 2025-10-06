@@ -3,16 +3,16 @@ info:
   title: Google Sheets API Proxy
   version: 1.0.0
   description: Proxy service for Google Sheets API v4
-
 servers:
-  - url: https://your-deployment.vercel.app
-
+- url: https://YOUR-RAILWAY-HOST
 paths:
   /api/values/append:
     post:
       operationId: appendValues
       summary: Append new rows to the end of a sheet
-      description: Adds new rows of data to the bottom of an existing range. Use this when you want to ADD data without overwriting. The API finds the last row with data and appends below it.
+      description: Adds new rows of data to the bottom of an existing range. Use this
+        when you want to ADD data without overwriting. The API finds the last row
+        with data and appends below it.
       requestBody:
         required: true
         content:
@@ -20,23 +20,27 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - range
-                - valueInputOption
-                - values
+              - spreadsheetId
+              - range
+              - valueInputOption
+              - values
               properties:
                 spreadsheetId:
                   type: string
                   description: The ID of the spreadsheet (found in URL after /d/)
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
                 range:
                   type: string
-                  description: A1 notation of where to append (e.g. Sheet1!A1 or just Sheet1)
-                  example: "Sheet1!A1"
+                  description: A1 notation of where to append (e.g. Sheet1!A1 or just
+                    Sheet1)
+                  example: Sheet1!A1
                 valueInputOption:
                   type: string
-                  description: How to interpret input - USER_ENTERED parses strings as formulas/dates, RAW keeps as-is
-                  enum: [USER_ENTERED, RAW]
+                  description: How to interpret input - USER_ENTERED parses strings
+                    as formulas/dates, RAW keeps as-is
+                  enum:
+                  - USER_ENTERED
+                  - RAW
                   default: USER_ENTERED
                 values:
                   type: array
@@ -44,26 +48,42 @@ paths:
                   items:
                     type: array
                     items: {}
-                  example: [["Alice", "alice@example.com", "555-1234"], ["Bob", "bob@example.com", "555-5678"]]
+                  example:
+                  - - Alice
+                    - alice@example.com
+                    - 555-1234
+                  - - Bob
+                    - bob@example.com
+                    - 555-5678
                 insertDataOption:
                   type: string
-                  description: INSERT_ROWS to push existing data down, OVERWRITE to replace
-                  enum: [INSERT_ROWS, OVERWRITE]
+                  description: INSERT_ROWS to push existing data down, OVERWRITE to
+                    replace
+                  enum:
+                  - INSERT_ROWS
+                  - OVERWRITE
                   default: OVERWRITE
+                includeValuesInResponse:
+                  type: boolean
+                  description: Whether the response should include the values that
+                    were appended/updated.
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              range: "Sheet1!A1"
-              valueInputOption: "USER_ENTERED"
-              values: [["Alice", "alice@example.com", "555-1234"]]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              range: Sheet1!A1
+              valueInputOption: USER_ENTERED
+              values:
+              - - Alice
+                - alice@example.com
+                - 555-1234
       responses:
         '200':
           description: Successfully appended data
-
   /api/values/update:
     put:
       operationId: updateValues
       summary: Overwrite existing values in a specific range
-      description: Replaces existing data in the specified range. Use this when you want to OVERWRITE specific cells with new data.
+      description: Replaces existing data in the specified range. Use this when you
+        want to OVERWRITE specific cells with new data.
       requestBody:
         required: true
         content:
@@ -71,22 +91,24 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - range
-                - valueInputOption
-                - values
+              - spreadsheetId
+              - range
+              - valueInputOption
+              - values
               properties:
                 spreadsheetId:
                   type: string
                   description: The ID of the spreadsheet
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
                 range:
                   type: string
                   description: A1 notation of exact range to update (e.g. Sheet1!A2:C2)
-                  example: "Sheet1!A2:C2"
+                  example: Sheet1!A2:C2
                 valueInputOption:
                   type: string
-                  enum: [USER_ENTERED, RAW]
+                  enum:
+                  - USER_ENTERED
+                  - RAW
                   default: USER_ENTERED
                 values:
                   type: array
@@ -94,53 +116,75 @@ paths:
                   items:
                     type: array
                     items: {}
-                  example: [["Updated Name", "updated@example.com", "555-9999"]]
+                  example:
+                  - - Updated Name
+                    - updated@example.com
+                    - 555-9999
+                includeValuesInResponse:
+                  type: boolean
+                  description: Whether the response should include the values that
+                    were appended/updated.
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              range: "Sheet1!A2:C2"
-              valueInputOption: "USER_ENTERED"
-              values: [["Bob", "bob@example.com", "555-5678"]]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              range: Sheet1!A2:C2
+              valueInputOption: USER_ENTERED
+              values:
+              - - Bob
+                - bob@example.com
+                - 555-5678
       responses:
         '200':
           description: Successfully updated data
-
   /api/values/get:
     get:
       operationId: getValues
       summary: Read values from a range
-      description: Retrieves data from the specified range in a Google Sheet. Returns values as a 2D array.
+      description: Retrieves data from the specified range in a Google Sheet. Returns
+        values as a 2D array.
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          description: The ID of the spreadsheet
-          schema:
-            type: string
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: range
-          in: query
-          required: true
-          description: A1 notation of range to retrieve (e.g. Sheet1!A1:C10)
-          schema:
-            type: string
-          example: "Sheet1!A1:C10"
-        - name: majorDimension
-          in: query
-          required: false
-          description: Whether to return rows or columns
-          schema:
-            type: string
-            enum: [ROWS, COLUMNS]
-            default: ROWS
+      - name: spreadsheetId
+        in: query
+        required: true
+        description: The ID of the spreadsheet
+        schema:
+          type: string
+        example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+      - name: range
+        in: query
+        required: true
+        description: A1 notation of range to retrieve (e.g. Sheet1!A1:C10)
+        schema:
+          type: string
+        example: Sheet1!A1:C10
+      - name: majorDimension
+        in: query
+        required: false
+        description: Whether to return rows or columns
+        schema:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+          default: ROWS
+      - name: valueRenderOption
+        in: query
+        required: false
+        description: How values should be rendered in the output.
+        schema:
+          type: string
+          enum:
+          - FORMATTED_VALUE
+          - UNFORMATTED_VALUE
+          - FORMULA
       responses:
         '200':
           description: Successfully retrieved data
-
   /api/values/clear:
     post:
       operationId: clearValues
       summary: Clear all values in a range
-      description: Removes all data from the specified range. Keeps formatting intact. Use this to delete content from cells while preserving the sheet structure.
+      description: Removes all data from the specified range. Keeps formatting intact.
+        Use this to delete content from cells while preserving the sheet structure.
       requestBody:
         required: true
         content:
@@ -148,29 +192,29 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - range
+              - spreadsheetId
+              - range
               properties:
                 spreadsheetId:
                   type: string
                   description: The ID of the spreadsheet
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
                 range:
                   type: string
                   description: A1 notation of range to clear
-                  example: "Sheet1!A2:C10"
+                  example: Sheet1!A2:C10
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              range: "Sheet1!A2:C10"
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              range: Sheet1!A2:C10
       responses:
         '200':
           description: Successfully cleared range
-
   /api/values/batchUpdate:
     post:
       operationId: batchUpdateValues
       summary: Update multiple ranges at once
-      description: Updates multiple ranges in a single request. More efficient than multiple individual update calls.
+      description: Updates multiple ranges in a single request. More efficient than
+        multiple individual update calls.
       requestBody:
         required: true
         content:
@@ -178,17 +222,19 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - valueInputOption
-                - data
+              - spreadsheetId
+              - valueInputOption
+              - data
               properties:
                 spreadsheetId:
                   type: string
                   description: The ID of the spreadsheet
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
                 valueInputOption:
                   type: string
-                  enum: [USER_ENTERED, RAW]
+                  enum:
+                  - USER_ENTERED
+                  - RAW
                   default: USER_ENTERED
                 data:
                   type: array
@@ -196,35 +242,45 @@ paths:
                   items:
                     type: object
                     required:
-                      - range
-                      - values
+                    - range
+                    - values
                     properties:
                       range:
                         type: string
                         description: A1 notation
-                        example: "Sheet1!A1:B1"
+                        example: Sheet1!A1:B1
                       values:
                         type: array
                         items:
                           type: array
-                        example: [["Header 1", "Header 2"]]
+                        example:
+                        - - Header 1
+                          - Header 2
+                includeValuesInResponse:
+                  type: boolean
+                  description: Whether the response should include the values that
+                    were appended/updated.
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              valueInputOption: "USER_ENTERED"
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              valueInputOption: USER_ENTERED
               data:
-                - range: "Sheet1!A1:B1"
-                  values: [["Name", "Email"]]
-                - range: "Sheet1!A2:B2"
-                  values: [["John", "john@example.com"]]
+              - range: Sheet1!A1:B1
+                values:
+                - - Name
+                  - Email
+              - range: Sheet1!A2:B2
+                values:
+                - - John
+                  - john@example.com
       responses:
         '200':
           description: Successfully updated multiple ranges
-
   /api/spreadsheets/create:
     post:
       operationId: createSpreadsheet
       summary: Create a new Google Spreadsheet
-      description: Creates a brand new spreadsheet. Returns the spreadsheetId you will use for other operations.
+      description: Creates a brand new spreadsheet. Returns the spreadsheetId you
+        will use for other operations.
       requestBody:
         required: true
         content:
@@ -238,7 +294,7 @@ paths:
                     title:
                       type: string
                       description: The name of the new spreadsheet
-                      example: "My New Spreadsheet"
+                      example: My New Spreadsheet
                 sheets:
                   type: array
                   description: Initial sheets to create
@@ -246,52 +302,56 @@ paths:
                     type: object
             example:
               properties:
-                title: "Sales Data 2025"
+                title: Sales Data 2025
               sheets:
-                - properties:
-                    title: "January"
+              - properties:
+                  title: January
       responses:
         '200':
           description: Successfully created spreadsheet
-
   /api/values/batchGet:
     get:
       operationId: batchGetValues
       summary: Read multiple ranges at once
-      description: Retrieves data from multiple ranges in a single request. More efficient than multiple individual get calls.
+      description: Retrieves data from multiple ranges in a single request. More efficient
+        than multiple individual get calls.
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          description: The ID of the spreadsheet
-          schema:
+      - name: spreadsheetId
+        in: query
+        required: true
+        description: The ID of the spreadsheet
+        schema:
+          type: string
+        example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+      - name: ranges
+        in: query
+        required: true
+        description: Multiple ranges in A1 notation (can specify multiple times)
+        schema:
+          type: array
+          items:
             type: string
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: ranges
-          in: query
-          required: true
-          description: Multiple ranges in A1 notation (can specify multiple times)
-          schema:
-            type: array
-            items:
-              type: string
-          example: ["Sheet1!A1:B5", "Sheet2!C1:D10"]
-        - name: majorDimension
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [ROWS, COLUMNS]
-            default: ROWS
+        example:
+        - Sheet1!A1:B5
+        - Sheet2!C1:D10
+      - name: majorDimension
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ROWS
+          - COLUMNS
+          default: ROWS
       responses:
         '200':
           description: Successfully retrieved multiple ranges
-
   /api/values/batchClear:
     post:
       operationId: batchClearValues
       summary: Clear multiple ranges at once
-      description: Removes data from multiple ranges in a single request. Keeps formatting intact.
+      description: Removes data from multiple ranges in a single request. Keeps formatting
+        intact.
       requestBody:
         required: true
         content:
@@ -299,55 +359,60 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - ranges
+              - spreadsheetId
+              - ranges
               properties:
                 spreadsheetId:
                   type: string
                   description: The ID of the spreadsheet
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
                 ranges:
                   type: array
                   description: Array of ranges to clear
                   items:
                     type: string
-                  example: ["Sheet1!A1:B5", "Sheet1!D1:E10"]
+                  example:
+                  - Sheet1!A1:B5
+                  - Sheet1!D1:E10
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              ranges: ["Sheet1!A2:C10", "Sheet1!E2:F10"]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              ranges:
+              - Sheet1!A2:C10
+              - Sheet1!E2:F10
       responses:
         '200':
           description: Successfully cleared multiple ranges
-
   /api/spreadsheets/get:
     get:
       operationId: getSpreadsheet
       summary: Get spreadsheet metadata and properties
-      description: Retrieves information about a spreadsheet including its title, sheets, and properties. Does not return cell data unless includeGridData is true.
+      description: Retrieves information about a spreadsheet including its title,
+        sheets, and properties. Does not return cell data unless includeGridData is
+        true.
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          description: The ID of the spreadsheet
-          schema:
-            type: string
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: includeGridData
-          in: query
-          required: false
-          description: True to include cell data, false for just metadata
-          schema:
-            type: boolean
-            default: false
+      - name: spreadsheetId
+        in: query
+        required: true
+        description: The ID of the spreadsheet
+        schema:
+          type: string
+        example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+      - name: includeGridData
+        in: query
+        required: false
+        description: True to include cell data, false for just metadata
+        schema:
+          type: boolean
+          default: false
       responses:
         '200':
           description: Successfully retrieved spreadsheet info
-
   /api/spreadsheets/batchUpdate:
     post:
       operationId: batchUpdateSpreadsheet
       summary: Apply formatting and structural changes to spreadsheet
-      description: Advanced endpoint for formatting cells, adding sheets, creating charts, etc. Use this for operations beyond just changing cell values.
+      description: Advanced endpoint for formatting cells, adding sheets, creating
+        charts, etc. Use this for operations beyond just changing cell values.
       requestBody:
         required: true
         content:
@@ -355,34 +420,38 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - requests
+              - spreadsheetId
+              - requests
               properties:
                 spreadsheetId:
                   type: string
                   description: The ID of the spreadsheet
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
                 requests:
                   type: array
-                  description: Array of update requests (addSheet, updateCells, mergeCells, etc)
+                  description: Array of update requests (addSheet, updateCells, mergeCells,
+                    etc)
                   items:
                     type: object
-                  example: [{"addSheet": {"properties": {"title": "New Sheet"}}}]
+                  example:
+                  - addSheet:
+                      properties:
+                        title: New Sheet
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
               requests:
-                - addSheet:
-                    properties:
-                      title: "Q2 Data"
+              - addSheet:
+                  properties:
+                    title: Q2 Data
       responses:
         '200':
           description: Successfully applied updates
-
   /api/values/batchGetByDataFilter:
     post:
       operationId: batchGetValuesByDataFilter
       summary: Read ranges using filters
-      description: Get data from ranges specified by filters. More flexible than batchGet for named ranges or complex selections.
+      description: Get data from ranges specified by filters. More flexible than batchGet
+        for named ranges or complex selections.
       requestBody:
         required: true
         content:
@@ -390,23 +459,29 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - dataFilters
+              - spreadsheetId
+              - dataFilters
               properties:
                 spreadsheetId:
                   type: string
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  example: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
                 dataFilters:
                   type: array
                   items:
                     type: object
+                majorDimension:
+                  type: string
+                  enum:
+                  - ROWS
+                  - COLUMNS
+                  description: The major dimension for the results.
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              dataFilters: [{"a1Range": "Sheet1!A1:C10"}]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              dataFilters:
+              - a1Range: Sheet1!A1:C10
       responses:
         '200':
           description: Success
-
   /api/values/batchUpdateByDataFilter:
     post:
       operationId: batchUpdateValuesByDataFilter
@@ -418,27 +493,32 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - valueInputOption
-                - data
+              - spreadsheetId
+              - valueInputOption
+              - data
               properties:
                 spreadsheetId:
                   type: string
                 valueInputOption:
                   type: string
-                  enum: [USER_ENTERED, RAW]
+                  enum:
+                  - USER_ENTERED
+                  - RAW
                 data:
                   type: array
                   items:
                     type: object
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              valueInputOption: "USER_ENTERED"
-              data: [{"dataFilter": {"a1Range": "Sheet1!A1"}, "values": [["Data"]]}]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              valueInputOption: USER_ENTERED
+              data:
+              - dataFilter:
+                  a1Range: Sheet1!A1
+                values:
+                - - Data
       responses:
         '200':
           description: Success
-
   /api/values/batchClearByDataFilter:
     post:
       operationId: batchClearValuesByDataFilter
@@ -450,8 +530,8 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - dataFilters
+              - spreadsheetId
+              - dataFilters
               properties:
                 spreadsheetId:
                   type: string
@@ -460,12 +540,12 @@ paths:
                   items:
                     type: object
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              dataFilters: [{"a1Range": "Sheet1!A2:B10"}]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              dataFilters:
+              - a1Range: Sheet1!A2:B10
       responses:
         '200':
           description: Success
-
   /api/spreadsheets/getByDataFilter:
     post:
       operationId: getSpreadsheetByDataFilter
@@ -477,8 +557,8 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - dataFilters
+              - spreadsheetId
+              - dataFilters
               properties:
                 spreadsheetId:
                   type: string
@@ -489,17 +569,18 @@ paths:
                 includeGridData:
                   type: boolean
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              dataFilters: [{"a1Range": "Sheet1!A1:C100"}]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              dataFilters:
+              - a1Range: Sheet1!A1:C100
       responses:
         '200':
           description: Success
-
   /api/spreadsheets/sheets/copyTo:
     post:
       operationId: copySheetTo
       summary: Copy a sheet to another spreadsheet
-      description: Copies a single sheet from one spreadsheet to another. sheetId is the numeric ID (not the name) found in sheet properties.
+      description: Copies a single sheet from one spreadsheet to another. sheetId
+        is the numeric ID (not the name) found in sheet properties.
       requestBody:
         required: true
         content:
@@ -507,9 +588,9 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - sheetId
-                - destinationSpreadsheetId
+              - spreadsheetId
+              - sheetId
+              - destinationSpreadsheetId
               properties:
                 spreadsheetId:
                   type: string
@@ -518,33 +599,31 @@ paths:
                 destinationSpreadsheetId:
                   type: string
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
               sheetId: 0
-              destinationSpreadsheetId: "1ABC123DestinationSpreadsheetId"
+              destinationSpreadsheetId: 1ABC123DestinationSpreadsheetId
       responses:
         '200':
           description: Success
-
   /api/spreadsheets/developerMetadata/get:
     get:
       operationId: getDeveloperMetadata
       summary: Get developer metadata by ID
       description: Retrieves custom developer metadata stored on spreadsheet objects.
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: metadataId
-          in: query
-          required: true
-          schema:
-            type: integer
+      - name: spreadsheetId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: metadataId
+        in: query
+        required: true
+        schema:
+          type: integer
       responses:
         '200':
           description: Success
-
   /api/spreadsheets/developerMetadata/search:
     post:
       operationId: searchDeveloperMetadata
@@ -557,8 +636,8 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - dataFilters
+              - spreadsheetId
+              - dataFilters
               properties:
                 spreadsheetId:
                   type: string
@@ -567,8 +646,28 @@ paths:
                   items:
                     type: object
             example:
-              spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-              dataFilters: [{"developerMetadataLookup": {"metadataKey": "myKey"}}]
+              spreadsheetId: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+              dataFilters:
+              - developerMetadataLookup:
+                  metadataKey: myKey
       responses:
         '200':
           description: Success
+x-openai-is-consequential: false
+x-openai-isConsequential: false
+x-openai-isSystemAction: true
+components:
+  securitySchemes:
+    googleOauth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/spreadsheets: Full access to Google Sheets.
+            https://www.googleapis.com/auth/spreadsheets.readonly: Read-only access
+              to Google Sheets.
+security:
+- googleOauth:
+  - https://www.googleapis.com/auth/spreadsheets
