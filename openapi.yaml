@@ -1,18 +1,18 @@
 openapi: 3.0.0
 info:
-  title: Google Sheets Forwarder API
+  title: Google Sheets Proxy API
   version: 1.0.0
-  description: Forwards JSON from Custom GPT to Google Sheets API
+  description: Minimal proxy that adds OAuth token to Google Sheets API requests
 
 servers:
   - url: https://your-deployment.vercel.app
 
 paths:
-  /api/append-row:
+  /api/proxy:
     post:
-      operationId: appendRow
-      summary: Append a row to a Google Sheet
-      description: Forwards the request body to Google Sheets API to append values
+      operationId: sheetsProxy
+      summary: Proxy requests to Google Sheets API
+      description: Forwards requests to any Google Sheets API endpoint with OAuth authentication
       requestBody:
         required: true
         content:
@@ -20,53 +20,31 @@ paths:
             schema:
               type: object
               required:
-                - spreadsheetId
-                - range
-                - values
+                - endpoint
               properties:
-                spreadsheetId:
+                endpoint:
                   type: string
-                  description: The ID of the Google Spreadsheet
-                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                range:
+                  description: The Google Sheets API endpoint path (without base URL)
+                  example: "spreadsheets/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/values/Sheet1!A1:append?valueInputOption=USER_ENTERED"
+                method:
                   type: string
-                  description: The A1 notation of the range to append to
-                  example: "Sheet1!A1:D1"
-                values:
-                  type: array
-                  description: Array of rows to append
-                  items:
-                    type: array
-                    items:
-                      type: string
-                  example: [["Data 1", "Data 2", "Data 3", "Data 4"]]
+                  description: HTTP method (defaults to POST)
+                  enum: [GET, POST, PUT, DELETE]
+                  default: POST
+              additionalProperties: true
+              example:
+                endpoint: "spreadsheets/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/values/Sheet1!A1:append?valueInputOption=USER_ENTERED"
+                method: "POST"
+                values: [["Data 1", "Data 2", "Data 3"]]
       responses:
         '200':
-          description: Successful response from Google Sheets API
+          description: Response from Google Sheets API
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  spreadsheetId:
-                    type: string
-                  tableRange:
-                    type: string
-                  updates:
-                    type: object
-                    properties:
-                      spreadsheetId:
-                        type: string
-                      updatedRange:
-                        type: string
-                      updatedRows:
-                        type: integer
-                      updatedColumns:
-                        type: integer
-                      updatedCells:
-                        type: integer
         '400':
-          description: Bad request
+          description: Bad request - missing endpoint
         '401':
           description: Unauthorized
         '405':
