@@ -1,0 +1,73 @@
+openapi: 3.0.0
+info:
+  title: Google Sheets Forwarder API
+  version: 1.0.0
+  description: Forwards JSON from Custom GPT to Google Sheets API
+
+servers:
+  - url: https://your-deployment.vercel.app
+
+paths:
+  /api/append-room-entry:
+    post:
+      operationId: appendRoomEntry
+      summary: Append a row to a Google Sheet
+      description: Forwards the request body to Google Sheets API to append values
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spreadsheetId
+                - range
+                - values
+              properties:
+                spreadsheetId:
+                  type: string
+                  description: The ID of the Google Spreadsheet
+                  example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                range:
+                  type: string
+                  description: The A1 notation of the range to append to
+                  example: "Sheet1!A1:D1"
+                values:
+                  type: array
+                  description: Array of rows to append
+                  items:
+                    type: array
+                    items:
+                      type: string
+                  example: [["Room 101", "2024-01-15", "Meeting", "Confirmed"]]
+      responses:
+        '200':
+          description: Successful response from Google Sheets API
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spreadsheetId:
+                    type: string
+                  tableRange:
+                    type: string
+                  updates:
+                    type: object
+                    properties:
+                      spreadsheetId:
+                        type: string
+                      updatedRange:
+                        type: string
+                      updatedRows:
+                        type: integer
+                      updatedColumns:
+                        type: integer
+                      updatedCells:
+                        type: integer
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '405':
+          description: Method not allowed
