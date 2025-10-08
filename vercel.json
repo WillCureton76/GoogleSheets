@@ -1,8 +1,18 @@
 {
   "functions": {
-    "api/**/*.js": {
+    "api/*.js": {
       "memory": 128,
       "maxDuration": 10
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/values/:subpath*",
+      "destination": "/api/values?__subpath=:subpath"
+    },
+    {
+      "source": "/api/spreadsheets/:subpath*",
+      "destination": "/api/spreadsheets?__subpath=:subpath"
+    }
+  ]
 }

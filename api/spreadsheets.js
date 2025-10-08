@@ -1,186 +1,200 @@
 export default async function handler(req, res) {
-  // Extract endpoint from URL path
-  const path = req.url.split('?')[0];
-
-  // Common auth check
-  const auth = req.headers['authorization'];
-  if (!auth?.toLowerCase().startsWith('bearer ')) {
-    return res.status(401).json({ error: 'Missing Authorization header' });
-  }
-
   try {
-    // Route to appropriate handler based on path
-    if (path.endsWith('/create')) {
-      return await handleCreate(req, res, auth);
-    } else if (path.endsWith('/get')) {
-      return await handleGet(req, res, auth);
-    } else if (path.endsWith('/batchUpdate')) {
-      return await handleBatchUpdate(req, res, auth);
-    } else if (path.endsWith('/getByDataFilter')) {
-      return await handleGetByDataFilter(req, res, auth);
-    } else if (path.endsWith('/copyTo')) {
-      return await handleCopyTo(req, res, auth);
-    } else if (path.includes('/developerMetadata/get')) {
-      return await handleGetDeveloperMetadata(req, res, auth);
-    } else if (path.includes('/developerMetadata/search')) {
-      return await handleSearchDeveloperMetadata(req, res, auth);
-    } else {
-      return res.status(404).json({ error: 'Endpoint not found' });
+    const auth = req.headers.authorization || "";
+    if (!auth.startsWith("Bearer ")) {
+      return res.status(401).json({
+        ok: false,
+        source: "proxy",
+        status: 401,
+        code: "MISSING_AUTH",
+        message: "Authorization: Bearer <token> required"
+      });
     }
-  } catch (error) {
-    console.error('Handler error:', error);
-    return res.status(500).json({ error: 'Internal server error', detail: error.message });
+    const accessToken = auth.slice("Bearer ".length).trim();
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const subpath = (url.searchParams.get("__subpath") || "").toLowerCase();
+    const action = (subpath || url.searchParams.get("action") || "").toLowerCase();
+
+    const spreadsheetId = url.searchParams.get("spreadsheetId");
+
+    const g = async (method, path, body) => {
+      const resp = await fetch(`https://sheets.googleapis.com/v4${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const text = await resp.text();
+      const json = text ? JSON.parse(text) : {};
+      if (!resp.ok) {
+        return res.status(resp.status).json({
+          ok: false,
+          source: "google",
+          status: resp.status,
+          code: (json.error && (json.error.status || json.error.code)) || "GOOGLE_ERROR",
+          message: (json.error && json.error.message) || "Google API error",
+          details: json.error || json
+        });
+      }
+      return res.status(200).json(json);
+    };
+
+    switch (action) {
+      case "get": {
+        if (!spreadsheetId) {
+          return res.status(400).json({
+            ok: false,
+            source: "proxy",
+            status: 400,
+            code: "INVALID_PARAMS",
+            message: "Require spreadsheetId"
+          });
+        }
+        return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${url.search || ""}`);
+      }
+
+      case "create": {
+        if (req.method !== "POST") {
+          return res.status(405).json({
+            ok: false,
+            source: "proxy",
+            status: 405,
+            code: "METHOD_NOT_ALLOWED",
+            message: "Use POST for /api/spreadsheets/create"
+          });
+        }
+        const body = await readJson(req, res);
+        if (!body) return;
+        return g("POST", `/spreadsheets`, body);
+      }
+
+      case "batchupdate": {
+        if (!spreadsheetId) {
+          return res.status(400).json({
+            ok: false,
+            source: "proxy",
+            status: 400,
+            code: "INVALID_PARAMS",
+            message: "Require spreadsheetId"
+          });
+        }
+        const body = await readJson(req, res);
+        if (!body) return;
+        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}:batchUpdate`, body);
+      }
+
+      case "getbydatafilter": {
+        if (!spreadsheetId) {
+          return res.status(400).json({
+            ok: false,
+            source: "proxy",
+            status: 400,
+            code: "INVALID_PARAMS",
+            message: "Require spreadsheetId"
+          });
+        }
+        const body = await readJson(req, res);
+        if (!body) return;
+        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}:getByDataFilter`, body);
+      }
+
+      case "sheets/copyto":
+      case "copyto": {
+        const sheetId = url.searchParams.get("sheetId");
+        if (!spreadsheetId || !sheetId) {
+          return res.status(400).json({
+            ok: false,
+            source: "proxy",
+            status: 400,
+            code: "INVALID_PARAMS",
+            message: "Require spreadsheetId and sheetId"
+          });
+        }
+        const body = await readJson(req, res);
+        if (!body) return;
+        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/sheets/${encodeURIComponent(sheetId)}:copyTo`, body);
+      }
+
+      case "developermetadata/get": {
+        if (!spreadsheetId) {
+          return res.status(400).json({
+            ok: false,
+            source: "proxy",
+            status: 400,
+            code: "INVALID_PARAMS",
+            message: "Require spreadsheetId"
+          });
+        }
+        const metadataId = url.searchParams.get("metadataId");
+        if (!metadataId) {
+          return res.status(400).json({
+            ok: false,
+            source: "proxy",
+            status: 400,
+            code: "INVALID_PARAMS",
+            message: "Require metadataId"
+          });
+        }
+        return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/developerMetadata/${encodeURIComponent(metadataId)}`);
+      }
+
+      case "developermetadata/search": {
+        if (!spreadsheetId) {
+          return res.status(400).json({
+            ok: false,
+            source: "proxy",
+            status: 400,
+            code: "INVALID_PARAMS",
+            message: "Require spreadsheetId"
+          });
+        }
+        const body = await readJson(req, res);
+        if (!body) return;
+        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/developerMetadata:search`, body);
+      }
+
+      default: {
+        if (req.method === "GET" && spreadsheetId) {
+          return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${url.search || ""}`);
+        }
+        return res.status(404).json({
+          ok: false,
+          source: "proxy",
+          status: 404,
+          code: "UNKNOWN_SPREADSHEETS_ACTION",
+          message: `Unknown /api/spreadsheets action '${action || "(none)"}'`
+        });
+      }
+    }
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      source: "proxy",
+      status: 500,
+      code: "UNHANDLED",
+      message: String(err?.message || err)
+    });
   }
 }
 
-// Individual endpoint handlers
-async function handleCreate(req, res, auth) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+async function readJson(req, res) {
+  try {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const raw = Buffer.concat(chunks).toString("utf8");
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    res.status(400).json({
+      ok: false,
+      source: "proxy",
+      status: 400,
+      code: "BAD_JSON",
+      message: "Invalid JSON body"
+    });
+    return null;
   }
-
-  const url = `https://sheets.googleapis.com/v4/spreadsheets`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': auth,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(req.body),
-  });
-
-  const data = await response.json();
-  return res.status(response.status).json(data);
-}
-
-async function handleGet(req, res, auth) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { spreadsheetId, includeGridData } = req.query;
-
-  const params = new URLSearchParams();
-  if (includeGridData) params.append('includeGridData', includeGridData);
-
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?${params}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': auth,
-    },
-  });
-
-  const data = await response.json();
-  return res.status(response.status).json(data);
-}
-
-async function handleBatchUpdate(req, res, auth) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { spreadsheetId, requests } = req.body;
-
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': auth,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ requests }),
-  });
-
-  const data = await response.json();
-  return res.status(response.status).json(data);
-}
-
-async function handleGetByDataFilter(req, res, auth) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { spreadsheetId, dataFilters, includeGridData } = req.body;
-
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:getByDataFilter`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': auth,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ dataFilters, includeGridData }),
-  });
-
-  const data = await response.json();
-  return res.status(response.status).json(data);
-}
-
-async function handleCopyTo(req, res, auth) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { spreadsheetId, sheetId, destinationSpreadsheetId } = req.body;
-
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/sheets/${sheetId}:copyTo`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': auth,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ destinationSpreadsheetId }),
-  });
-
-  const data = await response.json();
-  return res.status(response.status).json(data);
-}
-
-async function handleGetDeveloperMetadata(req, res, auth) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { spreadsheetId, metadataId } = req.query;
-
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/developerMetadata/${metadataId}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': auth,
-    },
-  });
-
-  const data = await response.json();
-  return res.status(response.status).json(data);
-}
-
-async function handleSearchDeveloperMetadata(req, res, auth) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { spreadsheetId, dataFilters } = req.body;
-
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/developerMetadata:search`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': auth,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ dataFilters }),
-  });
-
-  const data = await response.json();
-  return res.status(response.status).json(data);
 }
