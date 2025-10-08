@@ -1,4 +1,4 @@
-import { getAccessToken } from "@/lib/googleAuth";
+import { getAccessToken } from "./lib/googleAuth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
