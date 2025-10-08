@@ -8,11 +8,8 @@ export default async function handler(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const spreadsheetId = url.searchParams.get("spreadsheetId");
     const range = url.searchParams.get("range");
-
-    // Derive intended action
-    const subpath = (url.searchParams.get("__subpath") || url.searchParams.get("subpath") || "").toLowerCase();
     const pathTail = url.pathname.split("/").filter(Boolean).pop()?.toLowerCase() || "";
-    const action = (subpath || url.searchParams.get("action") || pathTail).toLowerCase();
+    const action = (url.searchParams.get("action") || pathTail).toLowerCase();
 
     if (!spreadsheetId) {
       return res.status(400).json({
@@ -24,7 +21,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Core Google fetch wrapper
+    // HTTP client wrapper for Google Sheets API
     const g = async (method, path, body) => {
       try {
         const resp = await fetch(`https://sheets.googleapis.com/v4${path}`, {
@@ -32,13 +29,12 @@ export default async function handler(req, res) {
           headers: {
             "Authorization": `Bearer ${accessToken}`,
             "Content-Type": "application/json",
+            "Accept": "application/json",
           },
           body: body ? JSON.stringify(body) : undefined,
         });
-
         const text = await resp.text();
         const json = text ? JSON.parse(text) : {};
-
         if (!resp.ok) {
           return res.status(resp.status).json({
             ok: false,
@@ -49,7 +45,6 @@ export default async function handler(req, res) {
             details: json.error || json,
           });
         }
-
         return res.status(200).json(json);
       } catch (err) {
         return res.status(502).json({
@@ -62,13 +57,13 @@ export default async function handler(req, res) {
       }
     };
 
-    // Build sanitized query string (removes internal keys)
+    // Build sanitized query string
     const buildCleanSearch = (extraDeletes = []) => {
       const clean = new URL(req.url, `http://${req.headers.host}`);
       const deleteKeys = [
         "action",
+        "subpath",
         "__subpath",
-        "subpath", // <-- crucial fix
         "spreadsheetId",
         "range",
         ...extraDeletes,
@@ -77,10 +72,10 @@ export default async function handler(req, res) {
       return clean.search || "";
     };
 
-    // Route dispatch
+    // Dispatch
     switch (action) {
       case "get": {
-        if (!range)
+        if (!range) {
           return res.status(400).json({
             ok: false,
             source: "proxy",
@@ -88,13 +83,13 @@ export default async function handler(req, res) {
             code: "INVALID_PARAMS",
             message: "Require range",
           });
-
+        }
         const qs = buildCleanSearch();
         return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}${qs}`);
       }
 
       case "update": {
-        if (!range)
+        if (!range) {
           return res.status(400).json({
             ok: false,
             source: "proxy",
@@ -102,8 +97,8 @@ export default async function handler(req, res) {
             code: "INVALID_PARAMS",
             message: "Require range",
           });
-
-        if (req.method !== "PUT" && req.method !== "POST")
+        }
+        if (req.method !== "PUT" && req.method !== "POST") {
           return res.status(405).json({
             ok: false,
             source: "proxy",
@@ -111,20 +106,19 @@ export default async function handler(req, res) {
             code: "METHOD_NOT_ALLOWED",
             message: "Use PUT or POST for update",
           });
-
+        }
         const body = await readJson(req, res);
         if (!body) return;
-
         const qs = buildCleanSearch();
         return g(
           "PUT",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}${qs || "?valueInputOption=RAW"}`,
-          body
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}${qs || "?valueInputOption=USER_ENTERED"}`,
+          body,
         );
       }
 
       case "append": {
-        if (!range)
+        if (!range) {
           return res.status(400).json({
             ok: false,
             source: "proxy",
@@ -132,21 +126,20 @@ export default async function handler(req, res) {
             code: "INVALID_PARAMS",
             message: "Require range",
           });
-
+        }
         const body = await readJson(req, res);
         if (!body) return;
-
         const qs = buildCleanSearch();
         const suffix = qs || "?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS";
         return g(
           "POST",
           `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:append${suffix}`,
-          body
+          body,
         );
       }
 
       case "clear": {
-        if (!range)
+        if (!range) {
           return res.status(400).json({
             ok: false,
             source: "proxy",
@@ -154,7 +147,12 @@ export default async function handler(req, res) {
             code: "INVALID_PARAMS",
             message: "Require range",
           });
-        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:clear`, {});
+        }
+        return g(
+          "POST",
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:clear`,
+          {},
+        );
       }
 
       case "batchupdate": {
@@ -170,12 +168,11 @@ export default async function handler(req, res) {
       }
 
       default: {
-        // Fallback: treat GET with range as values.get
+        // Fallback: GET with range → values.get
         if (req.method === "GET" && range) {
           const qs = buildCleanSearch();
           return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}${qs}`);
         }
-
         return res.status(404).json({
           ok: false,
           source: "proxy",
