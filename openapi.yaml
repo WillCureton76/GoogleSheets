@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: Proxy service for Google Sheets API v4
 servers:
-- url: https://YOUR-RAILWAY-HOST
+- url: https://google-sheets-blond.vercel.app
 paths:
   /api/values/append:
     post:
