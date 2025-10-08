@@ -7,8 +7,6 @@ info:
     All /api/values/* and /api/spreadsheets/* routes are rewritten internally
     to dispatch via __subpath to the Google Sheets API.
 
-servers:
-  - url: https://google-sheets-restored.vercel.app
 
 components:
   securitySchemes:
