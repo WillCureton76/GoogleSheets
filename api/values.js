@@ -52,10 +52,7 @@ export default async function handler(req, res) {
         }
         const valueRenderOption = url.searchParams.get("valueRenderOption") || "UNFORMATTED_VALUE";
         const dateTimeRenderOption = url.searchParams.get("dateTimeRenderOption") || "SERIAL_NUMBER";
-        return g(
-          "GET",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${encodeURIComponent(valueRenderOption)}&dateTimeRenderOption=${encodeURIComponent(dateTimeRenderOption)}`
-        );
+        return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${encodeURIComponent(valueRenderOption)}&dateTimeRenderOption=${encodeURIComponent(dateTimeRenderOption)}`);
       }
 
       case "update": {
@@ -69,11 +66,7 @@ export default async function handler(req, res) {
         const includeValuesInResponse = url.searchParams.get("includeValuesInResponse") || "false";
         const responseDateTimeRenderOption = url.searchParams.get("responseDateTimeRenderOption") || "SERIAL_NUMBER";
         const body = await readJson(req, res); if (!body) return;
-        return g(
-          "PUT",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=${encodeURIComponent(valueInputOption)}&includeValuesInResponse=${encodeURIComponent(includeValuesInResponse)}&responseDateTimeRenderOption=${encodeURIComponent(responseDateTimeRenderOption)}`,
-          body
-        );
+        return g("PUT", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=${encodeURIComponent(valueInputOption)}&includeValuesInResponse=${encodeURIComponent(includeValuesInResponse)}&responseDateTimeRenderOption=${encodeURIComponent(responseDateTimeRenderOption)}`, body);
       }
 
       case "append": {
@@ -85,11 +78,7 @@ export default async function handler(req, res) {
         const includeValuesInResponse = url.searchParams.get("includeValuesInResponse") || "false";
         const responseDateTimeRenderOption = url.searchParams.get("responseDateTimeRenderOption") || "SERIAL_NUMBER";
         const body = await readJson(req, res); if (!body) return;
-        return g(
-          "POST",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:append?valueInputOption=${encodeURIComponent(valueInputOption)}&insertDataOption=${encodeURIComponent(insertDataOption)}&includeValuesInResponse=${encodeURIComponent(includeValuesInResponse)}&responseDateTimeRenderOption=${encodeURIComponent(responseDateTimeRenderOption)}`,
-          body
-        );
+        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:append?valueInputOption=${encodeURIComponent(valueInputOption)}&insertDataOption=${encodeURIComponent(insertDataOption)}&includeValuesInResponse=${encodeURIComponent(includeValuesInResponse)}&responseDateTimeRenderOption=${encodeURIComponent(responseDateTimeRenderOption)}`, body);
       }
 
       case "batchget":
@@ -138,10 +127,7 @@ export default async function handler(req, res) {
         if (req.method === "GET" && spreadsheetId && range) {
           const valueRenderOption = url.searchParams.get("valueRenderOption") || "UNFORMATTED_VALUE";
           const dateTimeRenderOption = url.searchParams.get("dateTimeRenderOption") || "SERIAL_NUMBER";
-          return g(
-            "GET",
-            `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${encodeURIComponent(valueRenderOption)}&dateTimeRenderOption=${encodeURIComponent(dateTimeRenderOption)}`
-          );
+          return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${encodeURIComponent(valueRenderOption)}&dateTimeRenderOption=${encodeURIComponent(dateTimeRenderOption)}`);
         }
         return res.status(404).json({ ok: false, source: "proxy", status: 404, code: "UNKNOWN_VALUES_ACTION", message: `Unknown /api/values action '${action || "(none)"}'` });
       }
