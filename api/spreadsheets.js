@@ -4,14 +4,37 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
   try {
-    // Automatically get a fresh Google access token
     const accessToken = await getAccessToken();
-
     const url = new URL(req.url, `http://${req.headers.host}`);
-    const subpath = (url.searchParams.get("__subpath") || "").toLowerCase();
-    const action = (subpath || url.searchParams.get("action") || "").toLowerCase();
     const spreadsheetId = url.searchParams.get("spreadsheetId");
+    const pathTail = url.pathname.split("/").filter(Boolean).pop()?.toLowerCase() || "";
+    const action = (url.searchParams.get("action") || pathTail).toLowerCase();
 
+    if (!spreadsheetId && !pathTail.includes("create")) {
+      return res.status(400).json({
+        ok: false,
+        source: "proxy",
+        status: 400,
+        code: "INVALID_PARAMS",
+        message: "Missing spreadsheetId",
+      });
+    }
+
+    // Build sanitized query string
+    const buildCleanSearch = (extraDeletes = []) => {
+      const clean = new URL(req.url, `http://${req.headers.host}`);
+      const deleteKeys = [
+        "action",
+        "subpath",
+        "__subpath",
+        "spreadsheetId",
+        ...extraDeletes,
+      ];
+      for (const key of deleteKeys) clean.searchParams.delete(key);
+      return clean.search || "";
+    };
+
+    // Core Google fetch wrapper
     const g = async (method, path, body) => {
       try {
         const resp = await fetch(`https://sheets.googleapis.com/v4${path}`, {
@@ -22,10 +45,8 @@ export default async function handler(req, res) {
           },
           body: body ? JSON.stringify(body) : undefined,
         });
-
         const text = await resp.text();
         const json = text ? JSON.parse(text) : {};
-
         if (!resp.ok) {
           return res.status(resp.status).json({
             ok: false,
@@ -36,7 +57,6 @@ export default async function handler(req, res) {
             details: json.error || json,
           });
         }
-
         return res.status(200).json(json);
       } catch (err) {
         return res.status(502).json({
@@ -51,21 +71,12 @@ export default async function handler(req, res) {
 
     switch (action) {
       case "get": {
-        if (!spreadsheetId)
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId",
-          });
-
-        // Remove internal parameters before forwarding to Google
-        const cleanUrl = new URL(req.url, `http://${req.headers.host}`);
-        cleanUrl.searchParams.delete("action");
-        cleanUrl.searchParams.delete("__subpath");
-
-        return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${cleanUrl.search || ""}`);
+        const qs = buildCleanSearch();
+        const includeGridData = url.searchParams.get("includeGridData") || "false";
+        return g(
+          "GET",
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}?includeGridData=${includeGridData}${qs}`,
+        );
       }
 
       case "create": {
@@ -83,62 +94,46 @@ export default async function handler(req, res) {
       }
 
       case "batchupdate": {
-        if (!spreadsheetId)
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId",
-          });
         const body = await readJson(req, res);
         if (!body) return;
-        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}:batchUpdate`, body);
+        return g(
+          "POST",
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}:batchUpdate`,
+          body,
+        );
       }
 
       case "getbydatafilter": {
-        if (!spreadsheetId)
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId",
-          });
         const body = await readJson(req, res);
         if (!body) return;
-        return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}:getByDataFilter`, body);
+        return g(
+          "POST",
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}:getByDataFilter`,
+          body,
+        );
       }
 
       case "sheets/copyto":
       case "copyto": {
         const sheetId = url.searchParams.get("sheetId");
-        if (!spreadsheetId || !sheetId)
+        if (!sheetId)
           return res.status(400).json({
             ok: false,
             source: "proxy",
             status: 400,
             code: "INVALID_PARAMS",
-            message: "Require spreadsheetId and sheetId",
+            message: "Require sheetId",
           });
         const body = await readJson(req, res);
         if (!body) return;
         return g(
           "POST",
           `/spreadsheets/${encodeURIComponent(spreadsheetId)}/sheets/${encodeURIComponent(sheetId)}:copyTo`,
-          body
+          body,
         );
       }
 
       case "developermetadata/get": {
-        if (!spreadsheetId)
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId",
-          });
         const metadataId = url.searchParams.get("metadataId");
         if (!metadataId)
           return res.status(400).json({
@@ -150,35 +145,28 @@ export default async function handler(req, res) {
           });
         return g(
           "GET",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/developerMetadata/${encodeURIComponent(metadataId)}`
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/developerMetadata/${encodeURIComponent(metadataId)}`,
         );
       }
 
       case "developermetadata/search": {
-        if (!spreadsheetId)
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId",
-          });
         const body = await readJson(req, res);
         if (!body) return;
         return g(
           "POST",
           `/spreadsheets/${encodeURIComponent(spreadsheetId)}/developerMetadata:search`,
-          body
+          body,
         );
       }
 
       default: {
+        // fallback GET if called directly with /api/spreadsheets/get?spreadsheetId=...
         if (req.method === "GET" && spreadsheetId) {
-          // Also clean query parameters here
-          const cleanUrl = new URL(req.url, `http://${req.headers.host}`);
-          cleanUrl.searchParams.delete("action");
-          cleanUrl.searchParams.delete("__subpath");
-          return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${cleanUrl.search || ""}`);
+          const qs = buildCleanSearch();
+          return g(
+            "GET",
+            `/spreadsheets/${encodeURIComponent(spreadsheetId)}${qs}`,
+          );
         }
         return res.status(404).json({
           ok: false,
