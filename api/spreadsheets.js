@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
   try {
-    // Get fresh Google access token automatically
+    // Automatically get a fresh Google access token
     const accessToken = await getAccessToken();
 
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -59,7 +59,13 @@ export default async function handler(req, res) {
             code: "INVALID_PARAMS",
             message: "Require spreadsheetId",
           });
-        return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${url.search || ""}`);
+
+        // Remove internal parameters before forwarding to Google
+        const cleanUrl = new URL(req.url, `http://${req.headers.host}`);
+        cleanUrl.searchParams.delete("action");
+        cleanUrl.searchParams.delete("__subpath");
+
+        return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${cleanUrl.search || ""}`);
       }
 
       case "create": {
@@ -168,7 +174,11 @@ export default async function handler(req, res) {
 
       default: {
         if (req.method === "GET" && spreadsheetId) {
-          return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${url.search || ""}`);
+          // Also clean query parameters here
+          const cleanUrl = new URL(req.url, `http://${req.headers.host}`);
+          cleanUrl.searchParams.delete("action");
+          cleanUrl.searchParams.delete("__subpath");
+          return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}${cleanUrl.search || ""}`);
         }
         return res.status(404).json({
           ok: false,
@@ -198,9 +208,13 @@ async function readJson(req, res) {
     if (!raw) return {};
     return JSON.parse(raw);
   } catch {
-    res
-      .status(400)
-      .json({ ok: false, source: "proxy", status: 400, code: "BAD_JSON", message: "Invalid JSON body" });
+    res.status(400).json({
+      ok: false,
+      source: "proxy",
+      status: 400,
+      code: "BAD_JSON",
+      message: "Invalid JSON body",
+    });
     return null;
   }
 }
