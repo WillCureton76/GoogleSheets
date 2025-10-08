@@ -1,12 +1,10 @@
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
   try {
     const auth = req.headers.authorization || "";
     if (!auth.startsWith("Bearer ")) {
       return res.status(401).json({
-        ok: false,
-        source: "proxy",
-        status: 401,
-        code: "MISSING_AUTH",
+        ok: false, source: "proxy", status: 401, code: "MISSING_AUTH",
         message: "Authorization: Bearer <token> required"
       });
     }
@@ -20,98 +18,76 @@ export default async function handler(req, res) {
     const range = url.searchParams.get("range");
 
     const g = async (method, path, body) => {
-      const resp = await fetch(`https://sheets.googleapis.com/v4${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: body ? JSON.stringify(body) : undefined
-      });
-      const text = await resp.text();
-      const json = text ? JSON.parse(text) : {};
-      if (!resp.ok) {
-        return res.status(resp.status).json({
-          ok: false,
-          source: "google",
-          status: resp.status,
-          code: (json.error && (json.error.status || json.error.code)) || "GOOGLE_ERROR",
-          message: (json.error && json.error.message) || "Google API error",
-          details: json.error || json
+      try {
+        const resp = await fetch(`https://sheets.googleapis.com/v4${path}`, {
+          method,
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        const text = await resp.text();
+        const json = text ? JSON.parse(text) : {};
+        if (!resp.ok) {
+          return res.status(resp.status).json({
+            ok: false, source: "google", status: resp.status,
+            code: (json.error && (json.error.status || json.error.code)) || "GOOGLE_ERROR",
+            message: (json.error && json.error.message) || "Google API error",
+            details: json.error || json
+          });
+        }
+        return res.status(200).json(json);
+      } catch (err) {
+        return res.status(502).json({
+          ok: false, source: "proxy", status: 502, code: "FETCH_ERROR", message: String(err?.message || err)
         });
       }
-      return res.status(200).json(json);
     };
 
     switch (action) {
       case "get": {
         if (!spreadsheetId || !range) {
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId and range"
-          });
+          return res.status(400).json({ ok: false, source: "proxy", status: 400, code: "INVALID_PARAMS", message: "Require spreadsheetId and range" });
         }
         const valueRenderOption = url.searchParams.get("valueRenderOption") || "UNFORMATTED_VALUE";
         const dateTimeRenderOption = url.searchParams.get("dateTimeRenderOption") || "SERIAL_NUMBER";
         return g(
           "GET",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${valueRenderOption}&dateTimeRenderOption=${dateTimeRenderOption}`
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${encodeURIComponent(valueRenderOption)}&dateTimeRenderOption=${encodeURIComponent(dateTimeRenderOption)}`
         );
       }
 
       case "update": {
         if (req.method !== "PUT") {
-          return res.status(405).json({
-            ok: false,
-            source: "proxy",
-            status: 405,
-            code: "METHOD_NOT_ALLOWED",
-            message: "Use PUT for /api/values/update"
-          });
+          return res.status(405).json({ ok: false, source: "proxy", status: 405, code: "METHOD_NOT_ALLOWED", message: "Use PUT for /api/values/update" });
         }
         if (!spreadsheetId || !range) {
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId and range"
-          });
+          return res.status(400).json({ ok: false, source: "proxy", status: 400, code: "INVALID_PARAMS", message: "Require spreadsheetId and range" });
         }
         const valueInputOption = url.searchParams.get("valueInputOption") || "USER_ENTERED";
         const includeValuesInResponse = url.searchParams.get("includeValuesInResponse") || "false";
         const responseDateTimeRenderOption = url.searchParams.get("responseDateTimeRenderOption") || "SERIAL_NUMBER";
-        const body = await readJson(req, res);
-        if (!body) return;
+        const body = await readJson(req, res); if (!body) return;
         return g(
           "PUT",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=${valueInputOption}&includeValuesInResponse=${includeValuesInResponse}&responseDateTimeRenderOption=${responseDateTimeRenderOption}`,
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueInputOption=${encodeURIComponent(valueInputOption)}&includeValuesInResponse=${encodeURIComponent(includeValuesInResponse)}&responseDateTimeRenderOption=${encodeURIComponent(responseDateTimeRenderOption)}`,
           body
         );
       }
 
       case "append": {
         if (!spreadsheetId || !range) {
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId and range"
-          });
+          return res.status(400).json({ ok: false, source: "proxy", status: 400, code: "INVALID_PARAMS", message: "Require spreadsheetId and range" });
         }
         const valueInputOption = url.searchParams.get("valueInputOption") || "USER_ENTERED";
         const insertDataOption = url.searchParams.get("insertDataOption") || "INSERT_ROWS";
         const includeValuesInResponse = url.searchParams.get("includeValuesInResponse") || "false";
         const responseDateTimeRenderOption = url.searchParams.get("responseDateTimeRenderOption") || "SERIAL_NUMBER";
-        const body = await readJson(req, res);
-        if (!body) return;
+        const body = await readJson(req, res); if (!body) return;
         return g(
           "POST",
-          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:append?valueInputOption=${valueInputOption}&insertDataOption=${insertDataOption}&includeValuesInResponse=${includeValuesInResponse}&responseDateTimeRenderOption=${responseDateTimeRenderOption}`,
+          `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:append?valueInputOption=${encodeURIComponent(valueInputOption)}&insertDataOption=${encodeURIComponent(insertDataOption)}&includeValuesInResponse=${encodeURIComponent(includeValuesInResponse)}&responseDateTimeRenderOption=${encodeURIComponent(responseDateTimeRenderOption)}`,
           body
         );
       }
@@ -119,19 +95,12 @@ export default async function handler(req, res) {
       case "batchget":
       case "batchgetbydatafilter": {
         if (!spreadsheetId) {
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId"
-          });
+          return res.status(400).json({ ok: false, source: "proxy", status: 400, code: "INVALID_PARAMS", message: "Require spreadsheetId" });
         }
         if (action === "batchget") {
           return g("GET", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchGet${url.search || ""}`);
         } else {
-          const body = await readJson(req, res);
-          if (!body) return;
+          const body = await readJson(req, res); if (!body) return;
           return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchGetByDataFilter`, body);
         }
       }
@@ -139,20 +108,12 @@ export default async function handler(req, res) {
       case "batchupdate":
       case "batchupdatebydatafilter": {
         if (!spreadsheetId) {
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId"
-          });
+          return res.status(400).json({ ok: false, source: "proxy", status: 400, code: "INVALID_PARAMS", message: "Require spreadsheetId" });
         }
-        const body = await readJson(req, res);
-        if (!body) return;
-        const endpoint =
-          action === "batchupdate"
-            ? `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchUpdate`
-            : `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchUpdateByDataFilter`;
+        const body = await readJson(req, res); if (!body) return;
+        const endpoint = action === "batchupdate"
+          ? `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchUpdate`
+          : `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchUpdateByDataFilter`;
         return g("POST", endpoint, body);
       }
 
@@ -160,32 +121,16 @@ export default async function handler(req, res) {
       case "batchclear":
       case "batchclearbydatafilter": {
         if (!spreadsheetId) {
-          return res.status(400).json({
-            ok: false,
-            source: "proxy",
-            status: 400,
-            code: "INVALID_PARAMS",
-            message: "Require spreadsheetId"
-          });
+          return res.status(400).json({ ok: false, source: "proxy", status: 400, code: "INVALID_PARAMS", message: "Require spreadsheetId" });
         }
         if (action === "clear") {
-          if (!range) {
-            return res.status(400).json({
-              ok: false,
-              source: "proxy",
-              status: 400,
-              code: "INVALID_PARAMS",
-              message: "Require range for clear"
-            });
-          }
+          if (!range) return res.status(400).json({ ok: false, source: "proxy", status: 400, code: "INVALID_PARAMS", message: "Require range for clear" });
           return g("POST", `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:clear`, {});
         }
-        const body = await readJson(req, res);
-        if (!body) return;
-        const endpoint =
-          action === "batchclear"
-            ? `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchClear`
-            : `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchClearByDataFilter`;
+        const body = await readJson(req, res); if (!body) return;
+        const endpoint = action === "batchclear"
+          ? `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchClear`
+          : `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchClearByDataFilter`;
         return g("POST", endpoint, body);
       }
 
@@ -195,26 +140,14 @@ export default async function handler(req, res) {
           const dateTimeRenderOption = url.searchParams.get("dateTimeRenderOption") || "SERIAL_NUMBER";
           return g(
             "GET",
-            `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${valueRenderOption}&dateTimeRenderOption=${dateTimeRenderOption}`
+            `/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=${encodeURIComponent(valueRenderOption)}&dateTimeRenderOption=${encodeURIComponent(dateTimeRenderOption)}`
           );
         }
-        return res.status(404).json({
-          ok: false,
-          source: "proxy",
-          status: 404,
-          code: "UNKNOWN_VALUES_ACTION",
-          message: `Unknown /api/values action '${action || "(none)"}'`
-        });
+        return res.status(404).json({ ok: false, source: "proxy", status: 404, code: "UNKNOWN_VALUES_ACTION", message: `Unknown /api/values action '${action || "(none)"}'` });
       }
     }
   } catch (err) {
-    return res.status(500).json({
-      ok: false,
-      source: "proxy",
-      status: 500,
-      code: "UNHANDLED",
-      message: String(err?.message || err)
-    });
+    return res.status(500).json({ ok: false, source: "proxy", status: 500, code: "UNHANDLED", message: String(err?.message || err) });
   }
 }
 
@@ -226,13 +159,7 @@ async function readJson(req, res) {
     if (!raw) return {};
     return JSON.parse(raw);
   } catch (e) {
-    res.status(400).json({
-      ok: false,
-      source: "proxy",
-      status: 400,
-      code: "BAD_JSON",
-      message: "Invalid JSON body"
-    });
+    res.status(400).json({ ok: false, source: "proxy", status: 400, code: "BAD_JSON", message: "Invalid JSON body" });
     return null;
   }
 }
