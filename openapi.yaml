@@ -16,8 +16,8 @@ components:
       type: oauth2
       flows:
         authorizationCode:
-          authorizationUrl: https://google-sheets-restored.vercel.app/api/oauth/auth
-          tokenUrl: https://google-sheets-restored.vercel.app/api/oauth/token
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
           scopes:
             https://www.googleapis.com/auth/spreadsheets: Full access to spreadsheets.
             https://www.googleapis.com/auth/drive.file: Access to app-created or user-picked Drive files.
