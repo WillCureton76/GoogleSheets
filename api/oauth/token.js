@@ -1,6 +1,6 @@
 export const config = {
   api: {
-    bodyParser: false, // disable Next/Vercel's automatic JSON body parsing
+    bodyParser: false,
   },
 };
 
@@ -8,18 +8,23 @@ export default async function handler(req, res) {
   const target = "https://oauth2.googleapis.com/token";
 
   try {
-    // Read the raw body bytes
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const rawBody = Buffer.concat(chunks);
+    // Convert GET to POST if needed
+    const method = req.method === "GET" ? "POST" : req.method;
 
-    // Forward the request to Google
+    // Build body from query params if present
+    let body;
+    if (req.method === "GET" && req.url.includes("?")) {
+      body = req.url.slice(req.url.indexOf("?") + 1);
+    } else {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      body = Buffer.concat(chunks).toString();
+    }
+
     const googleResponse = await fetch(target, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: rawBody,
+      method,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
     });
 
     const text = await googleResponse.text();
@@ -29,8 +34,6 @@ export default async function handler(req, res) {
       .send(text);
   } catch (err) {
     console.error("OAuth token proxy error:", err);
-    res
-      .status(500)
-      .json({ ok: false, message: err.message || "Token proxy failed" });
+    res.status(500).json({ ok: false, message: err.message });
   }
 }
