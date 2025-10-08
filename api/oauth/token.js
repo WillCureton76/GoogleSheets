@@ -1,44 +1,48 @@
-// Disable auto body parsing so we can forward verbatim
-export const config = { api: { bodyParser: false } };
-
-// Token proxy → accepts GET or POST from ChatGPT, POSTs to Google
+// Pass-through to Google's OAuth 2.0 token endpoint
 export default async function handler(req, res) {
-  const target = "https://oauth2.googleapis.com/token";
+  const target = 'https://oauth2.googleapis.com/token';
 
   try {
-    // 1) Build form body
-    let formBody = "";
-    if (req.method === "GET") {
-      // ChatGPT sometimes calls token URL with GET + querystring
-      if (req.url.includes("?")) formBody = req.url.split("?")[1];
+    let body = '';
+
+    // If GET request (incorrect but handle it), convert query params to form body
+    if (req.method === 'GET') {
+      const url = new URL(req.url, `https://${req.headers.host}`);
+      const params = new URLSearchParams();
+      for (const [key, value] of url.searchParams) {
+        params.append(key, value);
+      }
+      body = params.toString();
     } else {
+      // POST request - read body stream
       const chunks = [];
-      for await (const c of req) chunks.push(c);
-      formBody = Buffer.concat(chunks).toString(); // already URL-encoded by caller
+      for await (const chunk of req) {
+        chunks.push(chunk);
+      }
+      body = Buffer.concat(chunks).toString('utf8');
     }
 
-    // 2) Compose headers; forward Basic auth if present
-    const headers = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
-    };
-    const auth = req.headers["authorization"];
-    if (auth) headers["Authorization"] = auth; // forward Basic <base64(client:secret)>
-
-    // 3) Always POST to Google with the form body
-    const google = await fetch(target, {
-      method: "POST",
-      headers,
-      body: formBody,
+    // Forward to Google with POST
+    const response = await fetch(target, {
+      method: 'POST',
+      headers: {
+        'Content-Type': req.headers['content-type'] || 'application/x-www-form-urlencoded',
+      },
+      body: body
     });
 
-    const text = await google.text();
-    res
-      .status(google.status)
-      .setHeader("Content-Type", "application/json")
-      .send(text);
+    // Forward status and headers
+    res.status(response.status);
+
+    const contentType = response.headers.get('content-type');
+    if (contentType) {
+      res.setHeader('Content-Type', contentType);
+    }
+
+    // Forward body
+    const responseBody = await response.text();
+    res.send(responseBody);
   } catch (err) {
-    console.error("OAuth token proxy error:", err);
-    res.status(500).json({ ok: false, code: "TOKEN_PROXY_ERROR", message: err.message });
+    res.status(500).json({ error: 'OAuth token proxy error', message: err.message });
   }
 }
