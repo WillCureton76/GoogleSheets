@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: Proxy service for Google Sheets API v4
 servers:
-- url: https://google-sheets-blond.vercel.app
+- url: https://google-sheets-restored.vercel.app
 paths:
   /api/values/append:
     post:
