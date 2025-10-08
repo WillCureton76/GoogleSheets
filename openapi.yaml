@@ -171,10 +171,9 @@ paths:
       operationId: appendValues
       summary: Append new rows to the end of a sheet
       description: >
-        Adds new rows of data to the bottom of an existing range. Use this when you want to
-        ADD data without overwriting. The API finds the last row with data and appends below it.
-        Perfect for adding new entries to a log or database. INSERT_ROWS will push existing data
-        down, OVERWRITE will replace any existing data in the append area.
+        Appends rows of data to the end of a sheet. Use when adding new entries
+        without overwriting. The API finds the last row and inserts below it.
+        INSERT_ROWS pushes data down; OVERWRITE replaces data in that range.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
@@ -312,8 +311,14 @@ paths:
                         enum: [ROWS, COLUMNS]
                       values:
                         type: array
+                        description: Two-dimensional array of cell values
                         items:
                           type: array
+                          items:
+                            oneOf:
+                              - { type: string }
+                              - { type: number }
+                              - { type: boolean }
             example:
               valueInputOption: USER_ENTERED
               data:
