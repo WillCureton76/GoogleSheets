@@ -1,35 +1,30 @@
-// Pass-through to Google's OAuth 2.0 token endpoint
 export default async function handler(req, res) {
-  const target = 'https://oauth2.googleapis.com/token';
+  const target = "https://oauth2.googleapis.com/token";
 
   try {
-    // Read request body
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const body = Buffer.concat(chunks).toString('utf8');
+    // Collect the raw body
+    const buffers = [];
+    for await (const chunk of req) buffers.push(chunk);
+    const rawBody = Buffer.concat(buffers).toString();
 
-    const response = await fetch(target, {
-      method: 'POST',
+    // Forward the exact body and content type
+    const google = await fetch(target, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": req.headers["content-type"] || "application/x-www-form-urlencoded",
       },
-      body: body
+      body: rawBody,
     });
 
-    // Forward status and headers
-    res.status(response.status);
-
-    const contentType = response.headers.get('content-type');
-    if (contentType) {
-      res.setHeader('Content-Type', contentType);
-    }
-
-    // Forward body
-    const responseBody = await response.text();
-    res.send(responseBody);
+    const text = await google.text();
+    res
+      .status(google.status)
+      .setHeader("Content-Type", "application/json")
+      .send(text);
   } catch (err) {
-    res.status(500).json({ error: 'OAuth token proxy error', message: err.message });
+    console.error("Token proxy error:", err);
+    res
+      .status(500)
+      .json({ ok: false, message: err.message || "Proxy failure" });
   }
 }
