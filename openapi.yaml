@@ -7,6 +7,8 @@ info:
     All /api/values/* and /api/spreadsheets/* routes are rewritten internally
     to dispatch via __subpath to the Google Sheets API.
 
+servers:
+  - url: https://google-sheets-restored.vercel.app
 
 components:
   securitySchemes:
@@ -73,35 +75,26 @@ paths:
           required: true
           schema: { type: string }
           description: The ID of the spreadsheet (found in URL after /d/)
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
         - name: range
           in: query
           required: true
           schema: { type: string }
-          description: A1 notation of the range to read (e.g., Sheet1!A1:B10 or just Sheet1)
-          example: "Sheet1!A1:B10"
+          description: A1 notation of the range to read
         - name: valueRenderOption
           in: query
           schema:
             type: string
             enum: [FORMATTED_VALUE, UNFORMATTED_VALUE, FORMULA]
             default: UNFORMATTED_VALUE
-          description: How values should be rendered - FORMATTED_VALUE returns formatted strings, UNFORMATTED_VALUE returns raw values, FORMULA returns formulas
         - name: dateTimeRenderOption
           in: query
           schema:
             type: string
             enum: [SERIAL_NUMBER, FORMATTED_STRING]
             default: SERIAL_NUMBER
-          description: How dates and times should be rendered - SERIAL_NUMBER returns numeric values, FORMATTED_STRING returns formatted date strings
       responses:
-        "200":
-          description: Successfully retrieved values
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully retrieved values }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/values/update:
     put:
@@ -110,59 +103,22 @@ paths:
       description: >
         Replaces existing data in the specified range. Use this when you want to OVERWRITE
         specific cells with new data. The range must match the dimensions of your values array.
-        USER_ENTERED will parse strings as formulas/dates, RAW keeps everything as literal strings.
+        USER_ENTERED parses strings as formulas/dates; RAW keeps them literal.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet (found in URL after /d/)
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: range
-          in: query
-          required: true
-          schema: { type: string }
-          description: A1 notation of where to update (e.g., Sheet1!A1:B2)
-          example: "Sheet1!A1:B2"
-        - name: valueInputOption
-          in: query
-          schema:
-            type: string
-            enum: [RAW, USER_ENTERED]
-            default: USER_ENTERED
-          description: How to interpret input - USER_ENTERED parses strings as formulas/dates, RAW keeps as-is
-        - name: includeValuesInResponse
-          in: query
-          schema: { type: boolean, default: false }
-          description: Whether the response should include the values that were updated
-        - name: responseDateTimeRenderOption
-          in: query
-          schema:
-            type: string
-            enum: [SERIAL_NUMBER, FORMATTED_STRING]
-            default: SERIAL_NUMBER
-          description: How dates should be rendered in the response
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
+        - { name: range, in: query, required: true, schema: { type: string } }
+        - { name: valueInputOption, in: query, schema: { type: string, enum: [RAW, USER_ENTERED], default: USER_ENTERED } }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ValuesBody"
-            example:
-              values:
-                - ["Updated Value 1", "Updated Value 2"]
-                - ["Updated Value 3", "Updated Value 4"]
+            schema: { $ref: "#/components/schemas/ValuesBody" }
       responses:
-        "200":
-          description: Successfully updated values
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully updated values }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/values/append:
     post:
@@ -176,94 +132,35 @@ paths:
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet (found in URL after /d/)
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: range
-          in: query
-          required: true
-          schema: { type: string }
-          description: A1 notation of where to append (e.g., Sheet1!A1 or just Sheet1). The range determines which columns to append to.
-          example: "Sheet1!A1"
-        - name: valueInputOption
-          in: query
-          schema:
-            type: string
-            enum: [RAW, USER_ENTERED]
-            default: USER_ENTERED
-          description: How to interpret input - USER_ENTERED parses strings as formulas/dates, RAW keeps as-is
-        - name: insertDataOption
-          in: query
-          schema:
-            type: string
-            enum: [INSERT_ROWS, OVERWRITE]
-            default: INSERT_ROWS
-          description: INSERT_ROWS to push existing data down, OVERWRITE to replace existing data
-        - name: includeValuesInResponse
-          in: query
-          schema: { type: boolean, default: false }
-          description: Whether the response should include the values that were appended
-        - name: responseDateTimeRenderOption
-          in: query
-          schema:
-            type: string
-            enum: [SERIAL_NUMBER, FORMATTED_STRING]
-            default: SERIAL_NUMBER
-          description: How dates should be rendered in the response
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
+        - { name: range, in: query, required: true, schema: { type: string } }
+        - { name: valueInputOption, in: query, schema: { type: string, enum: [RAW, USER_ENTERED], default: USER_ENTERED } }
+        - { name: insertDataOption, in: query, schema: { type: string, enum: [INSERT_ROWS, OVERWRITE], default: INSERT_ROWS } }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ValuesBody"
-            example:
-              values:
-                - ["Alice", "alice@example.com", "555-1234"]
-                - ["Bob", "bob@example.com", "555-5678"]
+            schema: { $ref: "#/components/schemas/ValuesBody" }
       responses:
-        "200":
-          description: Successfully appended data
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully appended data }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/values/clear:
     post:
       operationId: clearValues
       summary: Clear values from a range
       description: >
-        Clears all values from the specified range, leaving the cells empty. Use this when
-        you want to DELETE data but keep the sheet structure intact. Does not delete rows/columns,
-        only clears their content.
+        Clears all values from the specified range, leaving the cells empty.
+        Use this to delete data while keeping sheet structure intact.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet (found in URL after /d/)
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: range
-          in: query
-          required: true
-          schema: { type: string }
-          description: A1 notation of the range to clear (e.g., Sheet1!A1:B10)
-          example: "Sheet1!A1:B10"
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
+        - { name: range, in: query, required: true, schema: { type: string } }
       responses:
-        "200":
-          description: Successfully cleared range
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully cleared range }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/values/batchUpdate:
     post:
@@ -342,19 +239,13 @@ paths:
       operationId: batchClearValues
       summary: Clear multiple ranges in a single request
       description: >
-        Clear values from multiple ranges or sheets in one API call. More efficient than
-        multiple individual clear calls. Use this when you need to clear several different
-        areas of a spreadsheet at once.
+        Clear values from multiple ranges or sheets in one API call. Use when you need
+        to clear several areas of a spreadsheet at once.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet (found in URL after /d/)
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -364,60 +255,35 @@ paths:
               properties:
                 ranges:
                   type: array
-                  description: Array of ranges to clear
-                  items:
-                    type: string
-            example:
-              ranges:
-                - "Sheet1!A1:B10"
-                - "Sheet2!C3:D20"
+                  items: { type: string }
       responses:
-        "200":
-          description: Successfully batch cleared ranges
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully batch cleared ranges }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/spreadsheets/get:
     get:
       operationId: getSpreadsheet
       summary: Retrieve spreadsheet metadata and structure
       description: >
-        Gets metadata about the spreadsheet including sheet names, properties, and structure.
-        Does not return cell values - use /api/values/get for that. Useful for discovering
-        what sheets exist in a spreadsheet and their properties.
+        Gets metadata about the spreadsheet including sheet names and properties.
+        Does not return cell values. Useful for discovering sheet structure.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet (found in URL after /d/)
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: includeGridData
-          in: query
-          schema: { type: boolean, default: false }
-          description: Whether to include cell data in the response (usually false for just metadata)
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
+        - { name: includeGridData, in: query, schema: { type: boolean, default: false } }
       responses:
-        "200":
-          description: Successfully retrieved spreadsheet metadata
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully retrieved spreadsheet metadata }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/spreadsheets/create:
     post:
       operationId: createSpreadsheet
       summary: Create a new spreadsheet
       description: >
-        Creates a brand new Google Sheets spreadsheet. You can specify the title and initial
-        sheet properties. Returns the new spreadsheet ID which you'll use for subsequent operations.
+        Creates a new Google Sheets spreadsheet. You can specify the title and initial
+        sheet properties. Returns the new spreadsheet ID.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
@@ -431,47 +297,23 @@ paths:
                 properties:
                   type: object
                   properties:
-                    title:
-                      type: string
-                      description: The name of the new spreadsheet
-                sheets:
-                  type: array
-                  description: Initial sheets to create (optional)
-                  items:
-                    type: object
-            example:
-              properties:
-                title: "My New Spreadsheet"
-              sheets:
-                - properties:
-                    title: "Sheet1"
+                    title: { type: string }
       responses:
-        "200":
-          description: Successfully created spreadsheet
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully created spreadsheet }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/spreadsheets/batchUpdate:
     post:
       operationId: batchUpdateSpreadsheet
       summary: Perform structural updates on a spreadsheet
       description: >
-        Make structural changes to the spreadsheet like adding/deleting sheets, changing formatting,
-        adding charts, etc. This is different from batchUpdate on values - this modifies the
-        spreadsheet structure itself, not cell values. Each request object specifies one operation.
+        Make structural changes to the spreadsheet (add/delete sheets, change formatting).
+        Each request object specifies one operation.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet (found in URL after /d/)
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -481,47 +323,24 @@ paths:
               properties:
                 requests:
                   type: array
-                  description: Array of structural update requests
-                  items:
-                    type: object
-            example:
-              requests:
-                - addSheet:
-                    properties:
-                      title: "New Sheet"
+                  items: { type: object }
       responses:
-        "200":
-          description: Successfully performed structural updates
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully performed structural updates }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/spreadsheets/sheets/copyTo:
     post:
       operationId: copySheetTo
       summary: Copy a sheet to another spreadsheet
       description: >
-        Copies an entire sheet (tab) from one spreadsheet to another. Useful for duplicating
-        templates or moving sheets between spreadsheets. You need the source spreadsheet ID,
-        the sheet ID within it, and the destination spreadsheet ID.
+        Copies an entire sheet (tab) from one spreadsheet to another. Requires source
+        spreadsheet ID, sheet ID, and destination spreadsheet ID.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the source spreadsheet
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: sheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the sheet to copy (numeric ID, not the sheet name)
-          example: "0"
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
+        - { name: sheetId, in: query, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -529,69 +348,38 @@ paths:
             schema:
               type: object
               properties:
-                destinationSpreadsheetId:
-                  type: string
-                  description: The ID of the spreadsheet to copy the sheet to
-            example:
-              destinationSpreadsheetId: "1234567890abcdefghijklmnopqrstuvwxyz"
+                destinationSpreadsheetId: { type: string }
       responses:
-        "200":
-          description: Successfully copied sheet
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully copied sheet }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/spreadsheets/developerMetadata/get:
     get:
       operationId: getDeveloperMetadata
       summary: Retrieve a specific developer metadata entry
       description: >
-        Gets custom metadata that has been attached to the spreadsheet by applications.
-        Developer metadata is key-value data that apps can store alongside sheets for their own use.
+        Gets custom developer metadata attached to a spreadsheet by applications.
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-        - name: metadataId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the metadata entry to retrieve
-          example: "12345"
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
+        - { name: metadataId, in: query, required: true, schema: { type: string } }
       responses:
-        "200":
-          description: Successfully retrieved metadata
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully retrieved metadata }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/spreadsheets/developerMetadata/search:
     post:
       operationId: searchDeveloperMetadata
       summary: Search for developer metadata entries
       description: >
-        Search for custom metadata entries by criteria. Useful for finding metadata entries
-        that match specific keys or locations within the spreadsheet.
+        Searches for custom metadata entries by criteria (key or location).
       x-openai-is-consequential: false
       x-openai-isConsequential: false
       x-openai-isSystemAction: true
       parameters:
-        - name: spreadsheetId
-          in: query
-          required: true
-          schema: { type: string }
-          description: The ID of the spreadsheet
-          example: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        - { name: spreadsheetId, in: query, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -601,18 +389,7 @@ paths:
               properties:
                 dataFilters:
                   type: array
-                  description: Filters to match metadata entries
-                  items:
-                    type: object
-            example:
-              dataFilters:
-                - developerMetadataLookup:
-                    metadataKey: "myKey"
+                  items: { type: object }
       responses:
-        "200":
-          description: Successfully searched metadata
-        default:
-          description: Error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "200": { description: Successfully searched metadata }
+        default: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
